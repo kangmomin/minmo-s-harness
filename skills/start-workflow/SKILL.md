@@ -1,19 +1,21 @@
 ---
 name: start-workflow
 description: "전체 개발 워크플로우를 자동화. 요청 분석 → 난이도 산정 → Plan 리뷰 → 구현 → 품질 루프 → 문서 동기화 → PR → 성찰까지 일관된 파이프라인으로 실행한다."
-allowed-tools: AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash, Agent, EnterPlanMode, ExitPlanMode
+allowed-tools: AskUserQuestion, Read, Write, Edit, Glob, Grep, Bash, Agent, EnterPlanMode, ExitPlanMode, Skill
 argument-hint: <작업 설명 또는 빈 값>
 user-invocable: true
 ---
 
-# Start Workflow
+# Start Workflow — Orchestrator
 
-전체 개발 라이프사이클을 하나의 파이프라인으로 실행한다.
+전체 개발 라이프사이클을 **오케스트레이션 패턴**으로 실행한다.
+각 자율 실행 Phase를 전용 서브 에이전트에 위임하여, 단일 컨텍스트 소진 없이 전 단계를 완주한다.
 
 ```
-요청 분석 → 난이도 산정 → Plan 작성 → Plan 리뷰 → 구현
-→ 품질 루프(simplify → convention → e2e → scope review)
-→ 문서 동기화 → PR → 성찰 → 보고
+[유저 대화] Phase 0~3  : 직접 실행 (Spec, Plan, 리뷰)
+[상태 저장] Phase 3.5  : 상태 파일 생성
+[자율 실행] Phase 4~8  : 서브 에이전트 순차 위임
+[유저 대화] Phase 9    : 최종 보고 + 보완점 적용
 ```
 
 ## Language Rule
@@ -22,13 +24,9 @@ user-invocable: true
 
 ## 자율 실행 규칙
 
-**Plan 확정(Phase 3.4) 이후부터 성찰(Phase 8)까지는 유저 확인 없이 자율적으로 진행한다.**
-
 - Phase 0~3: 유저와 대화하며 Spec 확인, Plan 리뷰 피드백 반영
-- **Phase 3.4 (Plan 확정) 이후**: commit, 품질 루프, 문서 동기화, PR 생성까지 **묻지 않고 자동 실행**
+- **Phase 3.5 이후**: 서브 에이전트를 순차 호출하며 **묻지 않고 자동 실행**
 - Phase 9: 최종 보고에서 보완점 반영 여부만 유저에게 질문
-
-> Plan이 확정되면 "자율 실행을 시작합니다"를 출력하고, 이후 중간 질문 없이 완주한다.
 
 ---
 
@@ -37,10 +35,10 @@ user-invocable: true
 `/minmo-s-harness:request`를 호출하여 Technical Spec을 생성한다.
 
 - `$ARGUMENTS`가 있으면 request 스킬에 전달한다.
-- request 스킬이 완료되면 생성된 **Technical Spec** 전문을 변수로 보관한다.
+- request 스킬이 완료되면 생성된 **Technical Spec** 전문을 보관한다.
 - Spec에서 **작업 유형** (생성/수정/검토/디버깅)을 확인한다.
 
-> 이 Phase가 끝나면 유저에게 Spec을 보여주고 확인을 받는다.
+> Spec을 유저에게 보여주고 확인을 받는다.
 
 ---
 
@@ -48,36 +46,25 @@ user-invocable: true
 
 Technical Spec을 분석하여 1~10 난이도를 산정한다.
 
-### 산정 기준
-
 | 요소 | 낮음 (1-3) | 중간 (4-6) | 높음 (7-10) |
 |------|-----------|-----------|------------|
-| **파일 수** | 1-3개 수정 | 4-7개 수정 | 8개 이상 또는 신규 도메인 |
-| **레이어** | 단일 레이어 | 2개 레이어 | 3개 레이어 전체 (Handler+Usecase+Repo) |
-| **DB 변경** | 없음 | 컬럼 추가 | 신규 테이블 또는 마이그레이션 |
-| **외부 연동** | 없음 | 기존 gRPC 활용 | 신규 gRPC/외부 API |
-| **비즈니스 복잡도** | 단순 CRUD | 조건 분기 3개 이하 | 상태 머신, 복잡한 트랜잭션 |
-| **엣지 케이스** | 1-2개 | 3-5개 | 6개 이상 |
+| 파일 수 | 1-3개 | 4-7개 | 8개+ |
+| 레이어 | 단일 | 2개 | 3개 전체 |
+| DB 변경 | 없음 | 컬럼 추가 | 신규 테이블 |
+| 외부 연동 | 없음 | 기존 gRPC | 신규 gRPC |
+| 비즈니스 복잡도 | 단순 CRUD | 조건 분기 3개 이하 | 상태 머신 |
+| 엣지 케이스 | 1-2개 | 3-5개 | 6개+ |
 
-### 출력
+출력: `난이도: [N]/10 — [근거]`
 
-```
-난이도: [N]/10
-근거: [한 줄 요약]
-```
-
-> **난이도 7 이상**: Phase 3에서 Codex 리뷰를 추가로 진행한다.
+> 난이도 7+: Phase 3에서 Codex 리뷰 추가.
 
 ---
 
-## Phase 2: Scope Reviewer 에이전트 대기
+## Phase 2: Scope Reviewer 준비
 
-`scope-reviewer` 에이전트를 생성하되, **아직 실행하지 않는다**.
-Technical Spec 전문을 에이전트 프롬프트에 포함하여, 이후 Phase 6에서 호출할 준비만 한다.
-
-에이전트가 알아야 할 정보:
+Phase 5에서 사용할 scope-reviewer 정보를 메모한다:
 - Technical Spec 전문
-- 작업 유형
 - 엣지 케이스 목록
 
 ---
@@ -86,42 +73,25 @@ Technical Spec 전문을 에이전트 프롬프트에 포함하여, 이후 Phase
 
 ### 3.1 Plan 작성
 
-`EnterPlanMode`를 활성화하고 구현 계획을 수립한다.
-
-Plan에 포함할 내용:
+`EnterPlanMode` 활성화. Plan 포함 내용:
 - 구현 순서 (파일 단위)
-- 각 파일의 변경 내용 요약
-- 의존 관계 (어떤 파일이 먼저 수정되어야 하는지)
+- 각 파일 변경 내용 요약
+- 의존 관계
 - 예상 리스크
 
 ### 3.2 다관점 Plan 리뷰
 
-**최대 3개 서브에이전트를 병렬로 실행**한다. 관점이 3개를 초과하면 배치로 나눈다.
-
-#### 리뷰 관점 (6개)
-
-| # | 관점 | 핵심 질문 |
-|---|------|----------|
-| 1 | **유지보수성** | 이 Plan대로 구현하면 향후 수정이 용이한가? 결합도는 적절한가? |
-| 2 | **성능** | N+1 쿼리, 불필요한 조회, 인덱스 누락 가능성은? |
-| 3 | **엣지 케이스** | Spec의 엣지 케이스가 Plan에 모두 반영되었는가? 누락된 케이스는? |
-| 4 | **데이터 정합성** | 트랜잭션 경계가 적절한가? 부분 실패 시 롤백은? |
-| 5 | **보안** | 인증/인가, 입력 검증, 권한 체크가 Plan에 포함되었는가? |
-| 6 | **기존 코드 영향** | 기존 API/기능에 breaking change가 없는가? 의존 코드 영향은? |
-
-#### 실행 방식
+**최대 3개 서브에이전트 병렬 실행**, 2배치로 진행:
 
 ```
 Batch 1 (병렬): 유지보수성 + 성능 + 엣지 케이스
-  ↓ (3개 모두 완료 대기)
 Batch 2 (병렬): 데이터 정합성 + 보안 + 기존 코드 영향
 ```
 
-각 에이전트(subagent_type: `general-purpose`)에게 전달할 프롬프트:
+각 에이전트(subagent_type: `general-purpose`) 프롬프트:
 
 ```
 당신은 [관점명] 리뷰어입니다.
-
 아래 Plan을 [관점] 관점에서만 리뷰하세요.
 
 ## Technical Spec
@@ -132,182 +102,124 @@ Batch 2 (병렬): 데이터 정합성 + 보안 + 기존 코드 영향
 
 ## 리뷰 형식
 **Verdict**: APPROVE / CONCERN / REJECT
-**Issues**: [발견된 문제 목록, 없으면 "없음"]
-**Suggestions**: [개선 제안, 없으면 "없음"]
+**Issues**: [문제 목록 또는 "없음"]
+**Suggestions**: [개선 제안 또는 "없음"]
 ```
 
-#### 리뷰 종합
+리뷰 종합:
+- **REJECT 1개+**: Plan 수정 → 해당 관점 재리뷰
+- **CONCERN만**: 타당한 것 자동 반영
 
-모든 에이전트의 결과를 종합하여 유저에게 보고한다:
+### 3.3 Codex 리뷰 (난이도 7+)
 
-```markdown
-### Plan 리뷰 결과
-
-| 관점 | 판정 | 핵심 피드백 |
-|------|------|-----------|
-| 유지보수성 | APPROVE | - |
-| 성능 | CONCERN | N+1 가능성 지적 |
-| ... | ... | ... |
-```
-
-- **REJECT가 1개라도 있으면**: Plan을 수정하고 해당 관점만 재리뷰한다.
-- **CONCERN만 있으면**: 타당한 것은 자동 반영하고, 반영 결과를 유저에게 보고한다.
-
-### 3.3 Codex 리뷰 (난이도 7 이상)
-
-난이도가 7 이상이면 Codex에 Plan 리뷰를 위임한다.
-
-1. Codex 사용 가능 여부를 확인한다 (`mcp__codex__codex` 호출 시도).
-2. **사용 불가 시**: "Codex가 설정되어 있지 않아 건너뜁니다." 출력 후 다음 Phase로 진행.
-3. **사용 가능 시**: Architect 관점으로 Plan 리뷰를 위임한다.
-4. Codex 피드백을 종합 리뷰에 추가한다.
+Codex 사용 가능 시 Architect 관점으로 Plan 리뷰를 위임한다.
+불가 시 건너뛴다.
 
 ### 3.4 Plan 확정
 
-리뷰 반영이 완료되면 `ExitPlanMode`로 Plan을 확정하고 구현을 시작한다.
+`ExitPlanMode` 실행.
 
 ---
 
-## Phase 4: 구현
+## Phase 3.5: 상태 파일 생성 + 자율 실행 시작
 
-확정된 Plan에 따라 코드를 구현한다.
+Write tool로 `/tmp/workflow-state.md`를 생성한다:
 
-- Plan의 구현 순서를 따른다.
-- 구현 중 Plan과 달라지는 부분이 있으면 기록한다.
-- **각 논리적 단위 구현 완료 시** `/minmo-s-harness:commit`으로 커밋한다.
+```markdown
+# Workflow State
+
+## Spec
+[Technical Spec 전문 그대로 복사]
+
+## Task Type
+[생성/수정/검토/디버깅]
+
+## Difficulty
+[N]/10
+
+## Edge Cases
+[엣지 케이스 목록]
+
+## Plan
+[확정된 Plan 전문 그대로 복사]
+```
+
+출력: **"자율 실행을 시작합니다. Phase 4~8을 서브 에이전트로 순차 실행합니다."**
 
 ---
 
-## Phase 5: 품질 루프
+## Phase 4~8: 서브 에이전트 순차 실행
 
-**난이도와 무관하게 모든 단계를 반드시 실행한다. 어떤 단계도 건너뛰지 않는다.**
-추가 수정이 발생하지 않을 때까지 루프를 반복한다.
+**각 Phase를 전용 서브 에이전트에 위임한다.**
+이전 에이전트가 완료된 후 다음 에이전트를 실행한다.
+각 에이전트의 반환 결과를 기록해 둔다 (Phase 9 보고서에 사용).
+
+### Phase 4: 구현
 
 ```
-┌──────────────────────────────────────────┐
-│  5.0 go build + go test                  │
-│  5.1 simplify-loop                       │
-│  5.2 convention-check                    │
-│  5.3 e2e-test-loop                       │
-│  5.4 scope-reviewer (비즈니스 로직 검증)  │
-│  5.5 make test (최종 테스트 게이트)       │
-│           ↓                              │
-│  수정 사항 있음? → 수정 후 루프 재시작     │
-│  수정 사항 없음? → 루프 탈출              │
-└──────────────────────────────────────────┘
+Agent tool:
+  subagent_type: minmo-s-harness:workflow-implementer
+  prompt: |
+    상태 파일 `/tmp/workflow-state.md`를 읽고 Plan에 따라 코드를 구현하세요.
+    프로젝트 루트: {현재 작업 디렉토리}
+    구현 완료 후 변경 파일 목록, 커밋 수, Plan 대비 차이점을 보고하세요.
 ```
 
-### 5.0 Go 빌드 + 테스트
+완료 후 유저에게 간략 보고: "Phase 4 완료: [변경 파일 수]개 파일, [커밋 수]개 커밋"
 
-```bash
-go build ./cmd/main.go
-go test ./internal/...
+### Phase 5: 품질 루프
+
+```
+Agent tool:
+  subagent_type: minmo-s-harness:workflow-quality-loop
+  prompt: |
+    상태 파일 `/tmp/workflow-state.md`를 읽고 품질 루프를 실행하세요.
+    프로젝트 루트: {현재 작업 디렉토리}
+    루프 결과(반복 횟수, 각 단계 수정 건수, 최종 판정)를 보고하세요.
 ```
 
-- 빌드 실패 → 수정 후 재시도
-- 테스트 실패 → 수정 후 재시도
-- 통과 → 다음 단계로
+완료 후: "Phase 5 완료: [루프 횟수]회, 총 [수정 건수]건 수정"
 
-### 5.1 Simplify Loop
+### Phase 6: 문서 동기화 (조건부)
 
-`/minmo-s-harness:simplify-loop` 실행.
-수정이 발생하면 커밋한다.
+**작업 유형이 API 생성/수정/삭제인 경우만 실행. 그 외는 건너뛴다.**
 
-### 5.2 Convention Check
-
-`/minmo-s-harness:convention-check` 실행.
-위반 사항이 있으면 수정 후 커밋하고 **루프 재시작**.
-
-### 5.3 E2E Test Loop
-
-`/minmo-s-harness:e2e-test-loop` 실행.
-이슈가 있으면 수정 후 커밋하고 **루프 재시작**.
-
-### 5.4 Scope Review
-
-Phase 2에서 준비한 `scope-reviewer` 에이전트를 실행한다.
-
-에이전트 프롬프트:
 ```
-아래 Technical Spec을 기준으로, 현재 구현된 코드를 검증하세요.
-
-## Technical Spec
-[Spec 전문]
-
-## 검증 대상 파일
-[변경된 파일 목록]
+Agent tool:
+  subagent_type: minmo-s-harness:workflow-doc-sync
+  prompt: |
+    상태 파일 `/tmp/workflow-state.md`를 읽고 API 문서를 동기화하세요.
+    작업 유형: {Task Type}
+    프로젝트 루트: {현재 작업 디렉토리}
 ```
 
-- **PASS**: 다음 단계로.
-- **FAIL**: 누락 항목을 수정 후 커밋하고 **루프 재시작**.
+### Phase 7: PR
 
-### 5.5 Make Test (최종 게이트)
-
-루프의 마지막 단계로, 이전 단계(simplify, convention, e2e, scope-review)에서 수정이 발생했을 수 있으므로 전체 테스트를 다시 돌린다.
-
-```bash
-make test
+```
+Agent tool:
+  subagent_type: minmo-s-harness:workflow-pr
+  prompt: |
+    상태 파일 `/tmp/workflow-state.md`를 읽고 PR을 생성하세요.
+    프로젝트 루트: {현재 작업 디렉토리}
+    PR URL을 반드시 보고하세요.
 ```
 
-- **통과**: 루프 탈출.
-- **실패**: 실패한 테스트를 수정 후 커밋하고 **루프 재시작**.
+### Phase 8: 성찰
 
-### 루프 제한
-
-- **최대 3회** 루프 후에는 미해결 사항을 보고하고 강제 탈출한다.
-- 각 루프 종료 시 `/minmo-s-harness:commit`으로 커밋한다.
-
----
-
-## Phase 6: 문서 동기화
-
-작업 유형이 **API 생성, 수정, 삭제**인 경우에만 실행한다.
-그 외(검토, 디버깅 등)는 건너뛴다.
-
-`/minmo-s-harness:e2e-apidog-schema-gen` 실행.
-완료 후 커밋한다.
-
----
-
-## Phase 7: PR
-
-`/minmo-s-harness:commit-pr` 실행.
-PR URL을 기록한다.
-
----
-
-## Phase 8: 성찰
-
-PR의 커밋 로그를 분석하여 성찰을 진행한다.
-
-### 8.1 커밋 로그 분석
-
-```bash
-git log --oneline [base-branch]..HEAD
 ```
-
-### 8.2 성찰 항목
-
-| 항목 | 질문 |
-|------|------|
-| **계획 정확도** | Plan 대비 실제 구현에서 달라진 점은? 왜? |
-| **품질 루프 효과** | simplify/convention/e2e에서 몇 번 수정이 발생했는가? 반복 원인은? |
-| **난이도 정합성** | 산정한 난이도와 실제 체감 난이도가 일치하는가? |
-| **누락 사항** | Spec에 없었지만 구현 중 발견한 엣지 케이스나 요구사항은? |
-| **시간 분배** | 어느 Phase에서 가장 많은 수정이 발생했는가? |
-
-### 8.3 보완점 도출
-
-성찰 결과에서 **스킬 개선 가능한 보완점**을 도출한다.
-
-예시:
-- "convention-check에서 매번 같은 패턴이 걸린다 → 자동 수정 규칙 추가 필요"
-- "request 단계에서 특정 질문이 누락되어 구현 중 재질문 발생 → 질문 항목 추가"
-- "e2e-test에서 특정 에러 패턴 반복 → 테스트 케이스 템플릿 보강"
+Agent tool:
+  subagent_type: minmo-s-harness:workflow-reflection
+  prompt: |
+    상태 파일 `/tmp/workflow-state.md`를 읽고 워크플로우 성찰을 수행하세요.
+    프로젝트 루트: {현재 작업 디렉토리}
+    성찰 결과와 스킬 보완점을 보고하세요.
+```
 
 ---
 
 ## Phase 9: 최종 보고
+
+Phase 4~8 에이전트들의 결과를 종합하여 보고서를 작성한다.
 
 ```markdown
 ## Workflow Report
@@ -318,9 +230,9 @@ git log --oneline [base-branch]..HEAD
 - **PR**: [PR URL]
 
 ### 2. 구현 내역
-- **변경 파일**: [파일 수]개
+- **변경 파일**: [N]개
 - **커밋 수**: [N]개
-- **핵심 로직**: [로직 요약]
+- **핵심 로직**: [요약]
 
 ### 3. 엣지 케이스 대응
 | # | 케이스 | 대응 방법 |
@@ -329,18 +241,16 @@ git log --oneline [base-branch]..HEAD
 ### 4. 품질 루프 결과
 | 단계 | 루프 횟수 | 수정 건수 |
 |------|----------|----------|
-| simplify-loop | N | M |
-| convention-check | N | M |
-| e2e-test-loop | N | M |
+| simplify | N | M |
+| convention | N | M |
+| e2e | N | M |
 | scope-review | N | M |
 
 ### 5. 문서 동기화
-- Apidog 업데이트: [Y/N, 변경 내용 요약]
+- Apidog 업데이트: [Y/N, 요약]
 
 ### 6. 성찰
-- **계획 정확도**: [평가]
-- **반복 수정 원인**: [분석]
-- **체감 난이도 차이**: [분석]
+[성찰 에이전트 결과]
 
 ### 7. 보완점
 | # | 대상 스킬 | 보완 내용 | 적용 여부 |
@@ -349,42 +259,39 @@ git log --oneline [base-branch]..HEAD
 
 ### 보완점 적용
 
-보고서의 보완점을 유저에게 보여준 뒤:
-
-> "위 보완점을 해당 스킬에 직접 반영할까요? (전체/선택/건너뛰기)"
+> "위 보완점을 해당 스킬에 반영할까요? (전체/선택/건너뛰기)"
 
 - **전체**: 모든 보완점을 해당 스킬 파일에 반영한다.
 - **선택**: 유저가 번호로 선택한 항목만 반영한다.
 - **건너뛰기**: 보고서만 출력하고 종료한다.
 
-반영 시 해당 스킬의 SKILL.md를 `Edit`으로 수정하고, minmo-s-harness 레포에 커밋/푸시한다.
+### 정리
+
+상태 파일을 삭제한다:
+
+```bash
+rm -f /tmp/workflow-state.md
+```
 
 ---
 
 ## 흐름 요약
 
 ```
-[유저 대화 구간]
+[유저 대화]
 Phase 0: /request → Technical Spec (유저 확인)
 Phase 1: 난이도 산정 (1-10)
-Phase 2: scope-reviewer 에이전트 대기
-Phase 3: Plan 작성 → 6관점 리뷰 (3+3 병렬) → [난이도 7+: Codex]
-Phase 3.4: Plan 확정 → "자율 실행을 시작합니다"
+Phase 2: scope-reviewer 메모
+Phase 3: Plan 작성 → 6관점 리뷰 (3+3 병렬) → [난이도 7+: Codex] → Plan 확정
+Phase 3.5: 상태 파일 생성 → "자율 실행 시작"
 
-[자율 실행 구간 — 유저 확인 없이 완주]
-Phase 4: 구현 → commit
-Phase 5: 품질 루프 (전 단계 필수, 최대 3회)
-  5.0 go build + go test
-  5.1 simplify-loop
-  5.2 convention-check
-  5.3 e2e-test-loop
-  5.4 scope-review
-  5.5 make test (최종 게이트)
-  → 수정 있으면 재시작, 없으면 탈출
-Phase 6: e2e-apidog-schema-gen (API 변경 시만) → commit
-Phase 7: commit-pr → PR URL
-Phase 8: 성찰 (커밋 로그 분석 + 보완점 도출)
+[서브 에이전트 순차 실행 — 유저 확인 없이 완주]
+Phase 4: workflow-implementer    → 구현 + 커밋
+Phase 5: workflow-quality-loop   → 품질 루프 (최대 3회)
+Phase 6: workflow-doc-sync       → 문서 동기화 (API 변경 시만)
+Phase 7: workflow-pr             → PR 생성
+Phase 8: workflow-reflection     → 성찰
 
-[유저 대화 구간]
-Phase 9: 최종 보고 → 보완점 스킬 반영 (유저 선택)
+[유저 대화]
+Phase 9: 최종 보고 → 보완점 적용 (유저 선택) → 정리
 ```
