@@ -20,6 +20,16 @@ user-invocable: true
 
 유저와의 모든 대화는 **한국어**로 진행한다.
 
+## 자율 실행 규칙
+
+**Plan 확정(Phase 3.4) 이후부터 성찰(Phase 8)까지는 유저 확인 없이 자율적으로 진행한다.**
+
+- Phase 0~3: 유저와 대화하며 Spec 확인, Plan 리뷰 피드백 반영
+- **Phase 3.4 (Plan 확정) 이후**: commit, 품질 루프, 문서 동기화, PR 생성까지 **묻지 않고 자동 실행**
+- Phase 9: 최종 보고에서 보완점 반영 여부만 유저에게 질문
+
+> Plan이 확정되면 "자율 실행을 시작합니다"를 출력하고, 이후 중간 질문 없이 완주한다.
+
 ---
 
 ## Phase 0: 작업 범위 수집
@@ -141,7 +151,7 @@ Batch 2 (병렬): 데이터 정합성 + 보안 + 기존 코드 영향
 ```
 
 - **REJECT가 1개라도 있으면**: Plan을 수정하고 해당 관점만 재리뷰한다.
-- **CONCERN만 있으면**: 유저에게 반영 여부를 확인한다.
+- **CONCERN만 있으면**: 타당한 것은 자동 반영하고, 반영 결과를 유저에게 보고한다.
 
 ### 3.3 Codex 리뷰 (난이도 7 이상)
 
@@ -330,10 +340,14 @@ git log --oneline [base-branch]..HEAD
 ## 흐름 요약
 
 ```
-Phase 0: /request → Technical Spec
+[유저 대화 구간]
+Phase 0: /request → Technical Spec (유저 확인)
 Phase 1: 난이도 산정 (1-10)
 Phase 2: scope-reviewer 에이전트 대기
 Phase 3: Plan 작성 → 6관점 리뷰 (3+3 병렬) → [난이도 7+: Codex]
+Phase 3.4: Plan 확정 → "자율 실행을 시작합니다"
+
+[자율 실행 구간 — 유저 확인 없이 완주]
 Phase 4: 구현 → commit
 Phase 5: 품질 루프 (최대 3회)
   ├─ simplify-loop
@@ -344,5 +358,7 @@ Phase 5: 품질 루프 (최대 3회)
 Phase 6: e2e-apidog-schema-gen (API 변경 시만) → commit
 Phase 7: commit-pr → PR URL
 Phase 8: 성찰 (커밋 로그 분석 + 보완점 도출)
-Phase 9: 최종 보고 → 보완점 스킬 반영 (선택)
+
+[유저 대화 구간]
+Phase 9: 최종 보고 → 보완점 스킬 반영 (유저 선택)
 ```
