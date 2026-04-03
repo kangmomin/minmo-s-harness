@@ -49,12 +49,33 @@ EOF
 - Test: 테스트 코드
 - Chore: 빌드/설정
 
+## 빌드 검증
+
+모든 구현 완료 후, 상태 파일에 빌드 결과를 명시 기록한다:
+
+```bash
+go build ./cmd/main.go && echo "BUILD_OK" || echo "BUILD_FAIL"
+```
+
+상태 파일(`/tmp/workflow-state.md`)에 아래를 append한다:
+
+```markdown
+## Phase 4 Result
+- build: OK / FAIL
+- changed_files: [파일 목록]
+- commit_count: N
+- plan_diff: [차이점 또는 "없음"]
+```
+
+이를 통해 오케스트레이터가 상태 파일만 읽으면 빌드 결과를 즉시 확인할 수 있다.
+
 ## 출력
 
 구현 완료 후 다음을 반환한다:
 
 ```
 ## Phase 4 결과: 구현
+- 빌드: OK / FAIL
 - 변경 파일: [파일 목록]
 - 커밋 수: N개
 - Plan 대비 차이점: [내용 또는 "없음"]
