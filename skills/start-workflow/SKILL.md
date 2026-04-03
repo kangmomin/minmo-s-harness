@@ -178,15 +178,96 @@ Agent tool:
 
 완료 후 유저에게 간략 보고: "Phase 4 완료: [변경 파일 수]개 파일, [커밋 수]개 커밋"
 
-### Phase 5: 품질 루프
+### Phase 5: 품질 루프 (오케스트레이터 직접 관리)
+
+**단일 에이전트가 아닌, 각 품질 단계를 개별 에이전트로 분리하여 실행한다.**
+오케스트레이터가 루프를 직접 관리한다. 최대 3회 반복.
+
+```
+for iteration in 1..3:
+  5.0 go build + go test        → Bash 직접 실행
+  5.1 simplify-loop             → 서브 에이전트 (general-purpose)
+  5.2 convention-check          → 서브 에이전트 (general-purpose)
+  5.3 e2e-test-loop             → 서브 에이전트 (general-purpose)
+  5.4 scope-reviewer            → 서브 에이전트 (scope-reviewer)
+  5.5 make test                 → Bash 직접 실행
+
+  수정 있음? → 커밋 후 다음 iteration
+  수정 없음? → 루프 탈출
+```
+
+#### 5.0 Go 빌드 + 테스트
+
+Bash로 직접 실행:
+```bash
+go build ./cmd/main.go && go test ./internal/...
+```
+실패 시 general-purpose 에이전트를 생성하여 에러 수정을 위임한다. 수정 발생 시 `modified = true`.
+
+#### 5.1 Simplify
 
 ```
 Agent tool:
-  subagent_type: minmo-s-harness:workflow-quality-loop
+  subagent_type: general-purpose
   prompt: |
-    상태 파일 `/tmp/workflow-state.md`를 읽고 품질 루프를 실행하세요.
-    프로젝트 루트: {현재 작업 디렉토리}
-    루프 결과(반복 횟수, 각 단계 수정 건수, 최종 판정)를 보고하세요.
+    프로젝트 루트 {CWD}에서 Skill tool로 /minmo-s-harness:simplify-loop 를 실행하세요.
+    완료 후 "수정: Y/N, N건" 형식으로 보고하세요.
+```
+결과에 "수정: Y"가 포함되면 `modified = true`.
+
+#### 5.2 Convention Check
+
+```
+Agent tool:
+  subagent_type: general-purpose
+  prompt: |
+    프로젝트 루트 {CWD}에서 Skill tool로 /minmo-s-harness:convention-check 를 실행하세요.
+    위반 사항이 있으면 수정하세요.
+    완료 후 "위반: N건, 수정: Y/N" 형식으로 보고하세요.
+```
+결과에 "수정: Y"가 포함되면 `modified = true`.
+
+#### 5.3 E2E Test
+
+```
+Agent tool:
+  subagent_type: general-purpose
+  prompt: |
+    프로젝트 루트 {CWD}에서 Skill tool로 /minmo-s-harness:e2e-test-loop 를 실행하세요.
+    완료 후 "이슈: N건, 수정: Y/N" 형식으로 보고하세요.
+```
+결과에 "수정: Y"가 포함되면 `modified = true`.
+
+#### 5.4 Scope Review
+
+```
+Agent tool:
+  subagent_type: minmo-s-harness:scope-reviewer
+  prompt: |
+    상태 파일 `/tmp/workflow-state.md`의 Technical Spec을 기준으로
+    현재 구현된 코드를 검증하세요.
+    프로젝트 루트: {CWD}
+```
+FAIL이면 general-purpose 에이전트를 생성하여 누락 항목을 수정한다. 수정 발생 시 `modified = true`.
+
+#### 5.5 Make Test
+
+Bash로 직접 실행:
+```bash
+make test
+```
+실패 시 general-purpose 에이전트를 생성하여 수정을 위임한다. 수정 발생 시 `modified = true`.
+
+#### 루프 판정
+
+- `modified == true` → 변경사항 커밋 후 루프 재시작
+- `modified == false` → 루프 탈출
+- 3회 도달 → 미해결 사항 보고 후 강제 탈출
+
+커밋:
+```bash
+git add [수정 파일들]
+git commit -m "Fix: 품질 루프 수정 (iteration N)"
 ```
 
 완료 후: "Phase 5 완료: [루프 횟수]회, 총 [수정 건수]건 수정"
@@ -296,12 +377,19 @@ Phase 2: scope-reviewer 메모
 Phase 3: Plan 작성 → 6관점 리뷰 (3+3 병렬) → [난이도 7+: Codex] → Plan 확정
 Phase 3.5: 상태 파일 생성 → "자율 실행 시작"
 
-[서브 에이전트 순차 실행 — 유저 확인 없이 완주]
-Phase 4: workflow-implementer    → 구현 + 커밋
-Phase 5: workflow-quality-loop   → 품질 루프 (최대 3회)
-Phase 6: workflow-doc-sync       → 문서 동기화 (API 변경 시만)
-Phase 7: workflow-pr             → PR 생성
-Phase 8: workflow-reflection     → 성찰
+[자율 실행 — 유저 확인 없이 완주]
+Phase 4: workflow-implementer          → 구현 + 커밋
+Phase 5: 품질 루프 (오케스트레이터 관리, 최대 3회)
+  5.0 go build + go test               → Bash 직접
+  5.1 simplify-loop                    → general-purpose 에이전트
+  5.2 convention-check                 → general-purpose 에이전트
+  5.3 e2e-test-loop                    → general-purpose 에이전트
+  5.4 scope-reviewer                   → scope-reviewer 에이전트
+  5.5 make test                        → Bash 직접
+  → 수정 있으면 커밋 후 재시작, 없으면 탈출
+Phase 6: workflow-doc-sync             → 문서 동기화 (API 변경 시만)
+Phase 7: workflow-pr                   → PR 생성
+Phase 8: workflow-reflection           → 성찰
 
 [유저 대화]
 Phase 9: 최종 보고 → 보완점 적용 (유저 선택) → 정리
