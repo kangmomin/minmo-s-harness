@@ -190,6 +190,7 @@ Batch 2 (병렬): 데이터 정합성 + 보안 + 기존 코드 영향
 │  5.2 convention-check                    │
 │  5.3 e2e-test-loop                       │
 │  5.4 scope-reviewer (비즈니스 로직 검증)  │
+│  5.5 make test (최종 테스트 게이트)       │
 │           ↓                              │
 │  수정 사항 있음? → 수정 후 루프 재시작     │
 │  수정 사항 없음? → 루프 탈출              │
@@ -237,8 +238,19 @@ Phase 2에서 준비한 `scope-reviewer` 에이전트를 실행한다.
 [변경된 파일 목록]
 ```
 
-- **PASS**: 루프 탈출.
+- **PASS**: 다음 단계로.
 - **FAIL**: 누락 항목을 수정 후 커밋하고 **루프 재시작**.
+
+### 5.5 Make Test (최종 게이트)
+
+루프의 마지막 단계로, 이전 단계(simplify, convention, e2e, scope-review)에서 수정이 발생했을 수 있으므로 전체 테스트를 다시 돌린다.
+
+```bash
+make test
+```
+
+- **통과**: 루프 탈출.
+- **실패**: 실패한 테스트를 수정 후 커밋하고 **루프 재시작**.
 
 ### 루프 제한
 
@@ -367,6 +379,7 @@ Phase 5: 품질 루프 (전 단계 필수, 최대 3회)
   5.2 convention-check
   5.3 e2e-test-loop
   5.4 scope-review
+  5.5 make test (최종 게이트)
   → 수정 있으면 재시작, 없으면 탈출
 Phase 6: e2e-apidog-schema-gen (API 변경 시만) → commit
 Phase 7: commit-pr → PR URL
