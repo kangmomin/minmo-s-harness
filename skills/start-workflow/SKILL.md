@@ -180,37 +180,50 @@ Batch 2 (병렬): 데이터 정합성 + 보안 + 기존 코드 영향
 
 ## Phase 5: 품질 루프
 
-구현 완료 후 아래 4단계를 순차 실행한다.
-**추가 수정이 발생하지 않을 때까지 루프를 반복한다.**
+**난이도에 따라 품질 루프의 범위가 달라진다.**
 
-```
-┌─────────────────────────────────────────┐
-│  5.1 simplify-loop                      │
-│  5.2 convention-check                   │
-│  5.3 e2e-test-loop                      │
-│  5.4 scope-reviewer (비즈니스 로직 검증) │
-│           ↓                             │
-│  수정 사항 있음? → 수정 후 루프 재시작    │
-│  수정 사항 없음? → 루프 탈출             │
-└─────────────────────────────────────────┘
+### 난이도별 품질 루프 구성
+
+| 단계 | 난이도 1-3 | 난이도 4-6 | 난이도 7-10 |
+|------|-----------|-----------|------------|
+| **5.0 Go 빌드/테스트** | `go build` + `go test` | `go build` + `go test` | `go build` + `go test` |
+| **5.1 simplify-loop** | - | O | O |
+| **5.2 convention-check** | - | O | O |
+| **5.3 e2e-test-loop** | - | - | O |
+| **5.4 scope-review** | - | - | O |
+| **루프 반복** | 1회 (빌드/테스트 통과면 종료) | 수정 없을 때까지 (최대 2회) | 수정 없을 때까지 (최대 3회) |
+
+### 5.0 Go 빌드 + 테스트 (모든 난이도)
+
+**모든 난이도에서 필수 실행한다.**
+
+```bash
+go build ./cmd/main.go
+go test ./internal/...
 ```
 
-### 5.1 Simplify Loop
+- 빌드 실패 → 수정 후 재시도
+- 테스트 실패 → 실패한 테스트를 수정 후 재시도
+- 통과 → 다음 단계로 진행
+
+> 난이도 1-3은 여기서 통과하면 **Phase 6으로 바로 진행**한다.
+
+### 5.1 Simplify Loop (난이도 4 이상)
 
 `/minmo-s-harness:simplify-loop` 실행.
 수정이 발생하면 커밋한다.
 
-### 5.2 Convention Check
+### 5.2 Convention Check (난이도 4 이상)
 
 `/minmo-s-harness:convention-check` 실행.
 위반 사항이 있으면 수정 후 커밋하고 **루프 재시작**.
 
-### 5.3 E2E Test Loop
+### 5.3 E2E Test Loop (난이도 7 이상)
 
 `/minmo-s-harness:e2e-test-loop` 실행.
 이슈가 있으면 수정 후 커밋하고 **루프 재시작**.
 
-### 5.4 Scope Review
+### 5.4 Scope Review (난이도 7 이상)
 
 Phase 2에서 준비한 `scope-reviewer` 에이전트를 실행한다.
 
@@ -349,11 +362,10 @@ Phase 3.4: Plan 확정 → "자율 실행을 시작합니다"
 
 [자율 실행 구간 — 유저 확인 없이 완주]
 Phase 4: 구현 → commit
-Phase 5: 품질 루프 (최대 3회)
-  ├─ simplify-loop
-  ├─ convention-check
-  ├─ e2e-test-loop
-  └─ scope-review
+Phase 5: 품질 루프 (난이도별 범위 조절)
+  난이도 1-3: go build + go test → 통과면 종료
+  난이도 4-6: + simplify-loop + convention-check (최대 2회)
+  난이도 7-10: + e2e-test-loop + scope-review (최대 3회)
   → 수정 있으면 재시작, 없으면 탈출
 Phase 6: e2e-apidog-schema-gen (API 변경 시만) → commit
 Phase 7: commit-pr → PR URL
