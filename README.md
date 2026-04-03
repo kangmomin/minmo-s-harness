@@ -11,8 +11,8 @@ Post-Math 개발 워크플로우를 위한 Claude Code 플러그인.
 ## 초기 세팅
 
 ```bash
-/minmo-s-harness:init     # 전체 환경 한 번에 세팅
-/minmo-s-harness:doctor   # 전체 환경 한 번에 진단
+/minmo-s-harness:minmo-init     # 전체 환경 한 번에 세팅
+/minmo-s-harness:minmo-doctor   # 전체 환경 한 번에 진단
 ```
 
 ## 스킬 목록
@@ -21,8 +21,8 @@ Post-Math 개발 워크플로우를 위한 Claude Code 플러그인.
 
 | 스킬 | 호출 | 설명 |
 |------|------|------|
-| **init** | `/minmo-s-harness:init` | 모든 의존성 한 번에 세팅 (MCP, 환경 변수, 컨벤션) |
-| **doctor** | `/minmo-s-harness:doctor` | 모든 의존성 한 번에 진단 (필수/선택 분류) |
+| **minmo-init** | `/minmo-s-harness:minmo-init` | 모든 의존성 한 번에 세팅 (MCP, 환경 변수, 컨벤션) |
+| **minmo-doctor** | `/minmo-s-harness:minmo-doctor` | 모든 의존성 한 번에 진단 (필수/선택 분류) |
 
 ### 자동화 파이프라인
 

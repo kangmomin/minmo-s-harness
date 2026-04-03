@@ -1,5 +1,5 @@
 ---
-name: doctor
+name: minmo-doctor
 description: "minmo-s-harness 플러그인의 모든 의존성 상태를 한 번에 진단한다."
 allowed-tools: Read, Glob, Grep, Bash
 user-invocable: true
@@ -114,7 +114,7 @@ user-invocable: true
 ### 해결 필요 (ISSUES FOUND인 경우)
 | # | 항목 | 해결 방법 |
 |---|------|----------|
-| 1 | [항목] | `/minmo-s-harness:init` 실행 또는 [구체적 안내] |
+| 1 | [항목] | `/minmo-s-harness:minmo-init` 실행 또는 [구체적 안내] |
 ```
 
 ---

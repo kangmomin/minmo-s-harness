@@ -1,5 +1,5 @@
 ---
-name: init
+name: minmo-init
 description: "minmo-s-harness 플러그인의 모든 사전 세팅을 한 번에 진행한다."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 user-invocable: true
@@ -146,5 +146,5 @@ user-invocable: true
 | 4 | db-tools 플러그인 | 안내 완료 / 이미 설치됨 |
 | 5 | 컨벤션 선택 | 설정 완료 / 이미 설정됨 / 기본값 사용 |
 
-다음 단계: `/minmo-s-harness:doctor`로 전체 상태를 검증하세요.
+다음 단계: `/minmo-s-harness:minmo-doctor`로 전체 상태를 검증하세요.
 ```
