@@ -7,5 +7,6 @@ user-invocable: true
 0. 이미 생성된 PR 이 있다면 /minmo-s-harness:commit-push 만 진행해
 1. VERSION 파일이 있다면 patch VERSION 을 올려.
 2. diff 를 바탕으로 branch 를 작업 현황에 맞는 이름으로 컨벤션에 맞게 하나 새로 생성해. *브랜치는 feat 으로 시작하는 prefix 를 지녀야해* 만약 이미 branch 가 있다면 넘어가.
+   - **브랜치명 컨벤션 검증**: 생성 또는 기존 브랜치명이 `feat/**`, `hotfix/**`, `fix/**` 패턴을 따르는지 자동 검증한다. worktree 기본 브랜치명(`worktree-*`)이면 diff 내용 기반으로 적절한 이름으로 rename한다.
 3. /minmo-s-harness:commit-push 를 진행해
 4. 작업을 분석하여 브랜치 바로 상위 브랜치로 draft PR 을 열어.
