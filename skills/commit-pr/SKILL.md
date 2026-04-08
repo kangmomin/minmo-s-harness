@@ -6,7 +6,52 @@ user-invocable: true
 
 0. 이미 생성된 PR 이 있다면 /minmo-s-harness:commit-push 만 진행해
 1. VERSION 파일이 있다면 patch VERSION 을 올려.
-2. diff 를 바탕으로 branch 를 작업 현황에 맞는 이름으로 컨벤션에 맞게 하나 새로 생성해. *브랜치는 feat 으로 시작하는 prefix 를 지녀야해* 만약 이미 branch 가 있다면 넘어가.
-   - **브랜치명 컨벤션 검증**: 생성 또는 기존 브랜치명이 `feat/**`, `hotfix/**`, `fix/**` 패턴을 따르는지 자동 검증한다. worktree 기본 브랜치명(`worktree-*`)이면 diff 내용 기반으로 적절한 이름으로 rename한다.
+2. 브랜치 생성 (이미 `feat/**` 또는 `hotfix/**` 브랜치에 있다면 이 단계를 건너뛴다)
 3. /minmo-s-harness:commit-push 를 진행해
 4. 작업을 분석하여 브랜치 바로 상위 브랜치로 draft PR 을 열어.
+
+---
+
+## 브랜치 명명 컨벤션 (Step 2 상세)
+
+### 브랜치 생성 규칙
+
+**형식**: `{prefix}/{kebab-case-설명}`
+
+| prefix | 용도 | 예시 |
+|--------|------|------|
+| `feat` | 기능 추가/변경 | `feat/grpc-e2e-test` |
+| `hotfix` | 긴급 버그 수정 | `hotfix/fix-jwt-parsing` |
+
+### 이름 생성 절차
+
+1. **diff 분석**: `git diff`의 변경 파일과 내용을 읽고, **핵심 변경 내용을 2~4 단어로 요약**한다.
+2. **prefix 결정**:
+   - 버그 수정 → `hotfix`
+   - 그 외 모든 경우 → `feat`
+3. **kebab-case 변환**: 요약을 영문 소문자 kebab-case로 변환한다.
+   - 한글이면 영문으로 번역
+   - 공백과 특수문자는 `-`로 치환
+   - 연속 `-` 제거, 앞뒤 `-` 제거
+
+### 이름 규칙 (반드시 준수)
+
+| 규칙 | 올바른 예 | 잘못된 예 |
+|------|----------|----------|
+| **영문 소문자 + 하이픈만 사용** | `feat/add-grpc-support` | `feat/Add_gRPC_Support` |
+| **2~4 단어로 간결하게** | `feat/grpc-e2e-test` | `feat/add-grpc-rpc-e2e-test-automation-support-for-all-services` |
+| **구체적 의미 포함** | `feat/cursor-pagination` | `feat/update-code` |
+| **prefix 뒤에 `/` 필수** | `feat/user-auth` | `feat-user-auth` |
+| **숫자 허용, 선행 숫자 금지** | `feat/oauth2-login` | `feat/2nd-attempt` |
+
+### 자동 검증
+
+브랜치 생성 후 아래 패턴에 매칭되는지 검증한다:
+```
+^(feat|hotfix)/[a-z][a-z0-9-]{1,40}$
+```
+매칭 실패 시 이름을 재생성한다.
+
+### worktree 브랜치 처리
+
+현재 브랜치가 `worktree-*` 패턴이면 diff 내용 기반으로 위 규칙에 맞는 이름으로 `git branch -m`한다.
