@@ -55,6 +55,8 @@ user-invocable: true
 |------|----------|----------|
 | Go 설치 | `go version` | e2e-test |
 | Go 빌드 | `go build ./cmd/main.go` (dry-run) | e2e-test |
+| grpcurl 설치 (선택) | `grpcurl --version` | e2e-test (gRPC) |
+| GRPC_PORT (선택) | `secret/.env` 확인 | e2e-test (gRPC) |
 
 ---
 
@@ -103,6 +105,8 @@ user-invocable: true
 |------|------|------|
 | Go 설치 | OK / MISSING | go version |
 | Go 빌드 | OK / FAIL | dry-run |
+| grpcurl 설치 | OK / MISSING | 선택 (gRPC 전용) |
+| GRPC_PORT | OK / MISSING / SKIP | 선택 (gRPC 전용) |
 
 ---
 
@@ -133,3 +137,5 @@ user-invocable: true
 | APIDOG_PROJECT_ID | 선택 | Push 기능 전용 |
 | Codex | 선택 | 난이도 7+ Plan 리뷰 전용 |
 | .convention-check.json | 선택 | 없으면 기본값 사용 |
+| grpcurl | 선택 | gRPC E2E 테스트 전용 |
+| GRPC_PORT | 선택 | gRPC E2E 테스트 전용 |

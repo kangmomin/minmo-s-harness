@@ -24,6 +24,7 @@ user-invocable: true
 | 3 | PostgreSQL MCP 서버 | e2e-test, e2e-test-loop |
 | 4 | db-tools 플러그인 | db-gen-committed |
 | 5 | 컨벤션 선택 | convention-check |
+| 6 | grpcurl (선택) | e2e-test (gRPC) |
 
 ---
 
@@ -55,6 +56,7 @@ user-invocable: true
 | 5 | secret/.env | OK / MISSING | e2e-test |
 | 6 | db-tools 플러그인 | OK / MISSING | db-gen-committed |
 | 7 | 컨벤션 설정 | OK / DEFAULT | convention-check |
+| 8 | grpcurl | OK / MISSING | e2e-test (gRPC, 선택) |
 ```
 
 ### Step 2.5: 설정 가이드 / 세팅 선택
@@ -83,6 +85,7 @@ user-invocable: true
 | 5 | secret/.env | 프로젝트 담당자에게 요청하거나 `secret/.env.example`에서 복사 |
 | 6 | db-tools 플러그인 | `/plugin marketplace add postmath-plugins/db-tools` 실행 |
 | 7 | 컨벤션 설정 | 적용할 컨벤션을 선택하여 `.convention-check.json` 생성 |
+| 8 | grpcurl | `grpcurl --version` 확인. 없으면 설치 안내 |
 
 ### Step 3: 세팅 진행
 
@@ -147,6 +150,21 @@ user-invocable: true
 
 설치는 유저가 직접 해야 하므로 안내만 한다.
 
+#### 3.6 grpcurl (MISSING인 경우, 선택)
+
+> "gRPC E2E 테스트를 사용하려면 grpcurl이 필요합니다. 설치할까요? (Y/건너뛰기)"
+
+- Y: 플랫폼별 설치 안내:
+  > ```bash
+  > # macOS
+  > brew install grpcurl
+  > # Linux (Go)
+  > go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+  > # Linux (binary)
+  > # https://github.com/fullstorydev/grpcurl/releases
+  > ```
+- 건너뛰기: REST 테스트만으로도 e2e-test 사용 가능하다고 안내.
+
 #### 3.5 컨벤션 선택 (DEFAULT인 경우)
 
 > "convention-check에서 사용할 컨벤션을 설정합니다.
@@ -172,6 +190,7 @@ user-invocable: true
 | 3 | PostgreSQL MCP | 설정 완료 / 이미 설정됨 / 건너뜀 |
 | 4 | db-tools 플러그인 | 안내 완료 / 이미 설치됨 |
 | 5 | 컨벤션 선택 | 설정 완료 / 이미 설정됨 / 기본값 사용 |
+| 6 | grpcurl | 설치됨 / 안내 완료 / 건너뜀 |
 
 다음 단계: `/minmo-s-harness:minmo-doctor`로 전체 상태를 검증하세요.
 ```
