@@ -1,4 +1,5 @@
-# minmo-s-harness
+# minmo-s-harness **DEPRECATED**
+[최신 플러그인](https://github.com/kangmomin/harness-plugins) 으로 이동되었습니다.
 
 Post-Math 개발 워크플로우를 위한 Claude Code 플러그인.
 
