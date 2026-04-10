@@ -1,0 +1,41 @@
+{
+  "name": "minmo-s-harness",
+  "version": "1.5.1",
+  "description": "Post-Math 개발 워크플로우를 위한 Codex CLI 하네스. 커밋/PR 관리, 컨벤션 검사, Feature Spec 생성, E2E 테스트(REST+gRPC), Apidog 스키마 생성을 지원한다.",
+  "author": {
+    "name": "kangmomin",
+    "url": "https://github.com/kangmomin"
+  },
+  "homepage": "https://github.com/kangmomin/minmo-s-harness",
+  "repository": "https://github.com/kangmomin/minmo-s-harness",
+  "keywords": [
+    "workflow",
+    "codex",
+    "conventions",
+    "commit",
+    "testing",
+    "apidog",
+    "grpc"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "minmo-s-harness",
+    "shortDescription": "Post-Math 개발 워크플로우를 Codex CLI에서 실행",
+    "longDescription": "Post-Math 개발 워크플로우용 Codex CLI 하네스. request, commit/PR, convention-check, E2E, Apidog schema sync, workflow 에이전트를 포함한다.",
+    "developerName": "kangmomin",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/kangmomin/minmo-s-harness",
+    "defaultPrompt": [
+      "현재 작업을 Technical Spec으로 정리하고 구현 계획을 세워줘",
+      "변경사항을 컨벤션 검사하고 논리 단위로 커밋해줘",
+      "API 변경 후 E2E와 Apidog 스키마 동기화까지 진행해줘"
+    ],
+    "brandColor": "#0F766E",
+    "screenshots": []
+  }
+}

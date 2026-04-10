@@ -1,19 +1,29 @@
 # minmo-s-harness **DEPRECATED**
 [최신 플러그인](https://github.com/kangmomin/harness-plugins) 으로 이동되었습니다.
 
-Post-Math 개발 워크플로우를 위한 Claude Code 플러그인.
+Post-Math 개발 워크플로우를 위한 Claude Code / Codex CLI 하네스.
 
 ## 설치
+
+### Claude Code
 
 ```
 /plugin marketplace add kangmomin/minmo-s-harness
 ```
+
+### Codex CLI
+
+이 repo를 연 상태에서 `/plugins` 를 열면 `minmo-s-harness` 가 노출된다.
+repo-local marketplace 정의는 `.agents/plugins/marketplace.json` 에 들어 있다.
 
 ## 초기 세팅
 
 ```bash
 /minmo-s-harness:minmo-init     # 전체 환경 한 번에 세팅
 /minmo-s-harness:minmo-doctor   # 전체 환경 한 번에 진단
+
+$minmo-init-mm                  # Codex CLI 초기 세팅
+$minmo-doctor-mm                # Codex CLI 환경 진단
 ```
 
 ## 스킬 목록
